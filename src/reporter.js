@@ -38,6 +38,116 @@ function printWarnings(warnings) {
   return warnings.length;
 }
 
+function buildJsonReport(warnings, metadata = {}) {
+  const summary = {
+    scannedPrompts: metadata.scannedPrompts || 0,
+    issueCount: warnings.length,
+    scanRag: Boolean(metadata.scanRag)
+  };
+
+  if (metadata.baseline) {
+    summary.baseline = {
+      baselineCount: metadata.baseline.baselineCount,
+      currentCount: metadata.baseline.currentCount,
+      newCount: metadata.baseline.newCount,
+      fixedCount: metadata.baseline.fixedCount,
+      unchangedCount: metadata.baseline.unchangedCount
+    };
+  }
+
+  if (metadata.trend) {
+    summary.trend = {
+      previousIssueCount: metadata.trend.previousIssueCount,
+      currentIssueCount: metadata.trend.currentIssueCount,
+      delta: metadata.trend.delta,
+      totalRuns: metadata.trend.totalRuns
+    };
+  }
+
+  return {
+    tool: 'prompt-lint',
+    version: metadata.version || 'unknown',
+    summary,
+    warnings
+  };
+}
+
+function buildSarifReport(warnings, metadata = {}) {
+  const ruleIds = Array.from(new Set(warnings.map((warning) => warning.rule))).sort();
+
+  const sarifRules = ruleIds.map((ruleId) => ({
+    id: ruleId,
+    shortDescription: {
+      text: ruleId
+    },
+    name: ruleId
+  }));
+
+  const results = warnings.map((warning) => ({
+    ruleId: warning.rule,
+    level: 'warning',
+    message: {
+      text: warning.message
+    },
+    locations: [
+      {
+        physicalLocation: {
+          artifactLocation: {
+            uri: warning.file
+          },
+          region: {
+            startLine: warning.line
+          }
+        }
+      }
+    ]
+  }));
+
+  const properties = {
+    scannedPrompts: metadata.scannedPrompts || 0,
+    scanRag: Boolean(metadata.scanRag)
+  };
+
+  if (metadata.baseline) {
+    properties.baseline = {
+      baselineCount: metadata.baseline.baselineCount,
+      currentCount: metadata.baseline.currentCount,
+      newCount: metadata.baseline.newCount,
+      fixedCount: metadata.baseline.fixedCount,
+      unchangedCount: metadata.baseline.unchangedCount
+    };
+  }
+
+  if (metadata.trend) {
+    properties.trend = {
+      previousIssueCount: metadata.trend.previousIssueCount,
+      currentIssueCount: metadata.trend.currentIssueCount,
+      delta: metadata.trend.delta,
+      totalRuns: metadata.trend.totalRuns
+    };
+  }
+
+  return {
+    $schema: 'https://json.schemastore.org/sarif-2.1.0.json',
+    version: '2.1.0',
+    runs: [
+      {
+        tool: {
+          driver: {
+            name: 'prompt-lint',
+            version: metadata.version || 'unknown',
+            rules: sarifRules
+          }
+        },
+        results,
+        properties
+      }
+    ]
+  };
+}
+
 module.exports = {
-  printWarnings
+  printWarnings,
+  buildJsonReport,
+  buildSarifReport
 };

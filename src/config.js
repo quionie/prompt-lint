@@ -6,7 +6,10 @@ const path = require('path');
 const DEFAULT_CONFIG = {
   maxPromptLength: 1000,
   requireOutputFormat: true,
-  enablePromptInjectionRule: false
+  enablePromptInjectionRule: false,
+  include: [],
+  exclude: [],
+  plugins: []
 };
 
 function toBoolean(value, fallback) {
@@ -23,6 +26,15 @@ function toPositiveInteger(value, fallback) {
   return value;
 }
 
+function toStringArray(value, fallback) {
+  if (!Array.isArray(value)) {
+    return fallback;
+  }
+
+  const strings = value.filter((entry) => typeof entry === 'string').map((entry) => entry.trim());
+  return strings.filter(Boolean);
+}
+
 function normalizeConfig(rawConfig) {
   const source = rawConfig && typeof rawConfig === 'object' ? rawConfig : {};
 
@@ -32,7 +44,10 @@ function normalizeConfig(rawConfig) {
     enablePromptInjectionRule: toBoolean(
       source.enablePromptInjectionRule,
       DEFAULT_CONFIG.enablePromptInjectionRule
-    )
+    ),
+    include: toStringArray(source.include, DEFAULT_CONFIG.include),
+    exclude: toStringArray(source.exclude, DEFAULT_CONFIG.exclude),
+    plugins: toStringArray(source.plugins, DEFAULT_CONFIG.plugins)
   };
 }
 
@@ -60,8 +75,31 @@ function loadConfig(projectRoot = process.cwd()) {
   };
 }
 
+function loadIgnoreFile(projectRoot = process.cwd()) {
+  const ignorePath = path.join(projectRoot, '.promptlintignore');
+
+  if (!fs.existsSync(ignorePath)) {
+    return {
+      patterns: [],
+      path: null
+    };
+  }
+
+  const content = fs.readFileSync(ignorePath, 'utf8');
+  const patterns = content
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter((line) => line.length > 0 && !line.startsWith('#'));
+
+  return {
+    patterns,
+    path: ignorePath
+  };
+}
+
 module.exports = {
   DEFAULT_CONFIG,
   normalizeConfig,
-  loadConfig
+  loadConfig,
+  loadIgnoreFile
 };

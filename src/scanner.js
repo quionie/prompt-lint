@@ -2,6 +2,7 @@
 
 const fs = require('fs');
 const path = require('path');
+const { compileGlobs, shouldIncludePath, toPosixPath } = require('./fileFilters');
 
 const SUPPORTED_EXTENSIONS = new Set(['.js', '.ts', '.jsx', '.tsx']);
 const RAG_DOCUMENT_EXTENSIONS = new Set(['.md', '.txt', '.json', '.csv']);
@@ -24,8 +25,26 @@ function resolveBaseDirectory(startPath) {
   return stat.isDirectory() ? startPath : path.dirname(startPath);
 }
 
-function collectFilesByExtensions(startPath, extensions) {
+function buildScanFilters(options = {}) {
+  return {
+    projectRoot: options.projectRoot || process.cwd(),
+    includePatterns: compileGlobs(options.includeGlobs || []),
+    excludePatterns: compileGlobs(options.excludeGlobs || []),
+    ignorePatterns: compileGlobs(options.ignoreGlobs || [])
+  };
+}
+
+function buildPathForMatch(filePath, projectRoot) {
+  const relative = toPosixPath(path.relative(projectRoot, filePath));
+  if (relative.startsWith('..')) {
+    return toPosixPath(filePath);
+  }
+  return relative;
+}
+
+function collectFilesByExtensions(startPath, extensions, options = {}) {
   const files = [];
+  const filters = buildScanFilters(options);
   let stat;
 
   try {
@@ -35,7 +54,10 @@ function collectFilesByExtensions(startPath, extensions) {
   }
 
   if (stat.isFile()) {
-    if (extensions.has(path.extname(startPath))) {
+    if (
+      extensions.has(path.extname(startPath)) &&
+      shouldIncludePath(buildPathForMatch(startPath, filters.projectRoot), filters)
+    ) {
       return [startPath];
     }
     return files;
@@ -67,7 +89,12 @@ function collectFilesByExtensions(startPath, extensions) {
         continue;
       }
 
-      if (extensions.has(path.extname(entry.name))) {
+      if (!extensions.has(path.extname(entry.name))) {
+        continue;
+      }
+
+      const pathForMatch = buildPathForMatch(fullPath, filters.projectRoot);
+      if (shouldIncludePath(pathForMatch, filters)) {
         files.push(fullPath);
       }
     }
@@ -77,8 +104,8 @@ function collectFilesByExtensions(startPath, extensions) {
   return files;
 }
 
-function collectSourceFiles(startPath) {
-  return collectFilesByExtensions(startPath, SUPPORTED_EXTENSIONS);
+function collectSourceFiles(startPath, options = {}) {
+  return collectFilesByExtensions(startPath, SUPPORTED_EXTENSIONS, options);
 }
 
 function isEscaped(text, index) {
@@ -414,9 +441,9 @@ function extractPromptsFromSource(source) {
   return prompts;
 }
 
-function scanDirectory(startPath) {
+function scanDirectory(startPath, options = {}) {
   const baseDir = resolveBaseDirectory(startPath);
-  const sourceFiles = collectSourceFiles(startPath);
+  const sourceFiles = collectSourceFiles(startPath, options);
   const findings = [];
 
   for (const filePath of sourceFiles) {
@@ -442,9 +469,9 @@ function scanDirectory(startPath) {
   return findings;
 }
 
-function scanRagDocuments(startPath, ragRule) {
+function scanRagDocuments(startPath, ragRule, options = {}) {
   const baseDir = resolveBaseDirectory(startPath);
-  const documentFiles = collectFilesByExtensions(startPath, RAG_DOCUMENT_EXTENSIONS);
+  const documentFiles = collectFilesByExtensions(startPath, RAG_DOCUMENT_EXTENSIONS, options);
   const warnings = [];
 
   for (const filePath of documentFiles) {

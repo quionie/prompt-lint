@@ -28,12 +28,14 @@ function shouldRunRule(ruleName, config) {
   return true;
 }
 
-function lintPrompt(promptText, config = {}) {
+function lintPrompt(promptText, config = {}, pluginRules = []) {
   if (typeof promptText !== 'string' || promptText.trim().length === 0) {
     return [];
   }
 
-  return RULES.filter((rule) => shouldRunRule(rule.name, config))
+  const allRules = [...RULES, ...pluginRules];
+
+  return allRules.filter((rule) => shouldRunRule(rule.name, config))
     .map((rule) => rule.check(promptText, config))
     .filter(Boolean);
 }
