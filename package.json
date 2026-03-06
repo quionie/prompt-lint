@@ -1,0 +1,31 @@
+{
+  "name": "prompt-lint",
+  "version": "0.1.0",
+  "description": "ESLint-style static linter for LLM prompts.",
+  "main": "src/cli.js",
+  "type": "commonjs",
+  "bin": {
+    "prompt-lint": "./src/cli.js"
+  },
+  "scripts": {
+    "lint:prompts": "node ./src/cli.js",
+    "lint:example": "node ./src/cli.js ./example",
+    "test": "node --test"
+  },
+  "files": [
+    "src",
+    "README.md",
+    "LICENSE"
+  ],
+  "engines": {
+    "node": ">=18"
+  },
+  "keywords": [
+    "llm",
+    "prompt",
+    "lint",
+    "cli",
+    "static-analysis"
+  ],
+  "license": "MIT"
+}
