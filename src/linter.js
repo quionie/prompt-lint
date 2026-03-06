@@ -4,6 +4,7 @@ const vaguePrompt = require('./rules/vaguePrompt');
 const missingOutputFormat = require('./rules/missingOutputFormat');
 const conflictingInstructions = require('./rules/conflictingInstructions');
 const tokenExplosion = require('./rules/tokenExplosion');
+const tokenUsage = require('./rules/tokenUsage');
 const promptInjection = require('./rules/promptInjection');
 
 const RULES = [
@@ -11,6 +12,7 @@ const RULES = [
   missingOutputFormat,
   conflictingInstructions,
   tokenExplosion,
+  tokenUsage,
   promptInjection
 ];
 

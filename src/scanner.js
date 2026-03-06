@@ -4,6 +4,7 @@ const fs = require('fs');
 const path = require('path');
 
 const SUPPORTED_EXTENSIONS = new Set(['.js', '.ts', '.jsx', '.tsx']);
+const RAG_DOCUMENT_EXTENSIONS = new Set(['.md', '.txt', '.json', '.csv']);
 const TARGET_CALLS = [
   'openai.chat.completions.create',
   'client.chat.completions.create',
@@ -18,9 +19,29 @@ function shouldSkipDirectory(dirName) {
   return SKIP_DIRECTORIES.has(dirName);
 }
 
-function collectSourceFiles(startDir) {
+function resolveBaseDirectory(startPath) {
+  const stat = fs.statSync(startPath);
+  return stat.isDirectory() ? startPath : path.dirname(startPath);
+}
+
+function collectFilesByExtensions(startPath, extensions) {
   const files = [];
-  const stack = [startDir];
+  let stat;
+
+  try {
+    stat = fs.statSync(startPath);
+  } catch {
+    return files;
+  }
+
+  if (stat.isFile()) {
+    if (extensions.has(path.extname(startPath))) {
+      return [startPath];
+    }
+    return files;
+  }
+
+  const stack = [startPath];
 
   while (stack.length > 0) {
     const currentDir = stack.pop();
@@ -46,7 +67,7 @@ function collectSourceFiles(startDir) {
         continue;
       }
 
-      if (SUPPORTED_EXTENSIONS.has(path.extname(entry.name))) {
+      if (extensions.has(path.extname(entry.name))) {
         files.push(fullPath);
       }
     }
@@ -54,6 +75,10 @@ function collectSourceFiles(startDir) {
 
   files.sort();
   return files;
+}
+
+function collectSourceFiles(startPath) {
+  return collectFilesByExtensions(startPath, SUPPORTED_EXTENSIONS);
 }
 
 function isEscaped(text, index) {
@@ -389,8 +414,9 @@ function extractPromptsFromSource(source) {
   return prompts;
 }
 
-function scanDirectory(startDir) {
-  const sourceFiles = collectSourceFiles(startDir);
+function scanDirectory(startPath) {
+  const baseDir = resolveBaseDirectory(startPath);
+  const sourceFiles = collectSourceFiles(startPath);
   const findings = [];
 
   for (const filePath of sourceFiles) {
@@ -406,7 +432,7 @@ function scanDirectory(startDir) {
 
     for (const prompt of extractedPrompts) {
       findings.push({
-        file: path.relative(startDir, filePath),
+        file: path.relative(baseDir, filePath),
         line: prompt.line,
         promptText: prompt.promptText
       });
@@ -416,9 +442,47 @@ function scanDirectory(startDir) {
   return findings;
 }
 
+function scanRagDocuments(startPath, ragRule) {
+  const baseDir = resolveBaseDirectory(startPath);
+  const documentFiles = collectFilesByExtensions(startPath, RAG_DOCUMENT_EXTENSIONS);
+  const warnings = [];
+
+  for (const filePath of documentFiles) {
+    let source;
+
+    try {
+      source = fs.readFileSync(filePath, 'utf8');
+    } catch {
+      continue;
+    }
+
+    const lines = source.split(/\r?\n/);
+
+    for (let i = 0; i < lines.length; i += 1) {
+      const warning = ragRule.check(lines[i]);
+      if (!warning) {
+        continue;
+      }
+
+      warnings.push({
+        file: path.relative(baseDir, filePath),
+        line: i + 1,
+        rule: warning.rule,
+        message: warning.message,
+        suggestion: warning.suggestion
+      });
+    }
+  }
+
+  return warnings;
+}
+
 module.exports = {
   scanDirectory,
+  scanRagDocuments,
   extractPromptsFromSource,
   collectSourceFiles,
-  TARGET_CALLS
+  collectFilesByExtensions,
+  TARGET_CALLS,
+  RAG_DOCUMENT_EXTENSIONS
 };

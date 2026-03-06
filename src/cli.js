@@ -3,21 +3,51 @@
 
 const fs = require('fs');
 const path = require('path');
-const { scanDirectory } = require('./scanner');
+const { scanDirectory, scanRagDocuments } = require('./scanner');
 const { lintPrompt } = require('./linter');
 const { printWarnings } = require('./reporter');
 const { loadConfig } = require('./config');
+const ragPromptInjection = require('./rules/ragPromptInjection');
 
-function resolveScanPath(argument) {
-  if (!argument) {
+function resolveScanPath(targetPath) {
+  if (!targetPath) {
     return process.cwd();
   }
 
-  return path.resolve(process.cwd(), argument);
+  return path.resolve(process.cwd(), targetPath);
+}
+
+function parseArgs(argv) {
+  let ci = false;
+  let scanRag = false;
+  let targetPath = null;
+
+  for (const arg of argv) {
+    if (arg === '--ci') {
+      ci = true;
+      continue;
+    }
+    if (arg === '--scan-rag') {
+      scanRag = true;
+      continue;
+    }
+
+    if (arg.startsWith('--')) {
+      throw new Error(`Unknown flag: ${arg}`);
+    }
+
+    if (targetPath) {
+      throw new Error('Only one path argument is supported.');
+    }
+    targetPath = arg;
+  }
+
+  return { ci, scanRag, targetPath };
 }
 
 function run(argv = process.argv.slice(2)) {
-  const scanPath = resolveScanPath(argv[0]);
+  const { ci, scanRag, targetPath } = parseArgs(argv);
+  const scanPath = resolveScanPath(targetPath);
   if (!fs.existsSync(scanPath)) {
     throw new Error(`Path not found: ${scanPath}`);
   }
@@ -42,14 +72,20 @@ function run(argv = process.argv.slice(2)) {
       });
     }
   }
+  if (scanRag) {
+    warnings.push(...scanRagDocuments(scanPath, ragPromptInjection));
+  }
 
   warnings.sort((a, b) => a.file.localeCompare(b.file) || a.line - b.line || a.rule.localeCompare(b.rule));
-  printWarnings(warnings);
+  const issueCount = printWarnings(warnings);
   console.log(`Scanned prompts: ${promptFindings.length}`);
-  console.log(`Warnings: ${warnings.length}`);
+  console.log(`Warnings: ${issueCount}`);
 
-  if (warnings.length > 0) {
-    process.exitCode = 1;
+  if (ci) {
+    console.log(`${issueCount} prompt issues detected.`);
+    if (issueCount > 0) {
+      process.exit(1);
+    }
   }
 }
 
@@ -63,5 +99,6 @@ if (require.main === module) {
 }
 
 module.exports = {
-  run
+  run,
+  parseArgs
 };

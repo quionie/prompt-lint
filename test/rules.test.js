@@ -7,6 +7,7 @@ const vaguePrompt = require('../src/rules/vaguePrompt');
 const missingOutputFormat = require('../src/rules/missingOutputFormat');
 const conflictingInstructions = require('../src/rules/conflictingInstructions');
 const tokenExplosion = require('../src/rules/tokenExplosion');
+const tokenUsage = require('../src/rules/tokenUsage');
 const { lintPrompt } = require('../src/linter');
 
 test('vaguePrompt triggers on short prompts', () => {
@@ -28,6 +29,12 @@ test('tokenExplosion triggers for long prompts', () => {
   const prompt = 'a'.repeat(1001);
   const result = tokenExplosion.check(prompt);
   assert.equal(result.rule, 'tokenExplosion');
+});
+
+test('tokenUsage triggers for very long prompts', () => {
+  const prompt = 'a'.repeat(1501);
+  const result = tokenUsage.check(prompt);
+  assert.equal(result.rule, 'tokenUsage');
 });
 
 test('linter returns empty list for non-string inputs', () => {

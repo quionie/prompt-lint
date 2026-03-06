@@ -16,7 +16,7 @@ function groupByFile(warnings) {
 function printWarnings(warnings) {
   if (!warnings.length) {
     console.log('No prompt-lint warnings found.');
-    return;
+    return 0;
   }
 
   const grouped = groupByFile(warnings);
@@ -34,6 +34,8 @@ function printWarnings(warnings) {
       console.log('');
     }
   }
+
+  return warnings.length;
 }
 
 module.exports = {
