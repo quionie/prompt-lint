@@ -5,7 +5,42 @@ const INSTRUCTION_VERBS = [
   'analyze',
   'extract',
   'explain',
-  'classify'
+  'classify',
+  'generate',
+  'create',
+  'list',
+  'compare',
+  'translate',
+  'write',
+  'describe',
+  'identify',
+  'recommend',
+  'calculate',
+  'convert',
+  'format',
+  'find',
+  'evaluate',
+  'define',
+  'implement',
+  'design',
+  'review',
+  'debug',
+  'refactor',
+  'optimize',
+  'parse',
+  'validate',
+  'transform',
+  'map',
+  'filter',
+  'sort',
+  'merge',
+  'build',
+  'test',
+  'deploy',
+  'update',
+  'delete',
+  'edit',
+  'rewrite'
 ];
 
 function hasInstructionVerb(promptText) {
@@ -18,7 +53,7 @@ module.exports = {
   check(promptText) {
     const words = promptText.trim().split(/\s+/).filter(Boolean);
 
-    if (words.length < 8 || !hasInstructionVerb(promptText)) {
+    if (words.length < 8 && !hasInstructionVerb(promptText)) {
       return {
         rule: 'vaguePrompt',
         message: 'Prompt may be ambiguous.',

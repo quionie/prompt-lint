@@ -37,6 +37,7 @@ function lintPrompt(promptText, config = {}, pluginRules = []) {
 
   return allRules.filter((rule) => shouldRunRule(rule.name, config))
     .map((rule) => rule.check(promptText, config))
+    .flat()
     .filter(Boolean);
 }
 

@@ -54,16 +54,21 @@ function normalizeConfig(rawConfig) {
 function loadConfig(projectRoot = process.cwd()) {
   const configPath = path.join(projectRoot, '.promptlintrc');
 
-  if (!fs.existsSync(configPath)) {
-    return {
-      config: { ...DEFAULT_CONFIG },
-      path: null
-    };
+  let raw;
+  try {
+    raw = fs.readFileSync(configPath, 'utf8');
+  } catch (err) {
+    if (err.code === 'ENOENT') {
+      return {
+        config: { ...DEFAULT_CONFIG },
+        path: null
+      };
+    }
+    throw new Error(`Failed to read .promptlintrc: ${err.message}`);
   }
 
   let parsed;
   try {
-    const raw = fs.readFileSync(configPath, 'utf8');
     parsed = JSON.parse(raw);
   } catch (error) {
     throw new Error(`Invalid .promptlintrc JSON: ${error.message}`);
@@ -78,14 +83,19 @@ function loadConfig(projectRoot = process.cwd()) {
 function loadIgnoreFile(projectRoot = process.cwd()) {
   const ignorePath = path.join(projectRoot, '.promptlintignore');
 
-  if (!fs.existsSync(ignorePath)) {
-    return {
-      patterns: [],
-      path: null
-    };
+  let content;
+  try {
+    content = fs.readFileSync(ignorePath, 'utf8');
+  } catch (err) {
+    if (err.code === 'ENOENT') {
+      return {
+        patterns: [],
+        path: null
+      };
+    }
+    throw new Error(`Failed to read .promptlintignore: ${err.message}`);
   }
 
-  const content = fs.readFileSync(ignorePath, 'utf8');
   const patterns = content
     .split(/\r?\n/)
     .map((line) => line.trim())

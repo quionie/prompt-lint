@@ -22,11 +22,17 @@ function unwrapModule(mod) {
   return mod;
 }
 
-function extractRules(pluginExport, sourceLabel) {
+function extractRules(pluginExport, sourceLabel, _depth = 0) {
+  if (_depth > 5) {
+    throw new Error(
+      `Plugin ${sourceLabel} exceeded maximum nesting depth. Ensure the plugin exports rules directly or via a single factory function.`
+    );
+  }
+
   const plugin = unwrapModule(pluginExport);
 
   if (typeof plugin === 'function') {
-    return extractRules(plugin(), sourceLabel);
+    return extractRules(plugin(), sourceLabel, _depth + 1);
   }
 
   if (Array.isArray(plugin)) {

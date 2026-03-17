@@ -5,7 +5,25 @@ const OUTPUT_FORMAT_HINTS = [
   'bullet points',
   'bullets',
   'table',
-  'numbered list'
+  'numbered list',
+  'csv',
+  'xml',
+  'yaml',
+  'yml',
+  'markdown',
+  'html',
+  'plain text',
+  'code block',
+  'list format',
+  'array',
+  'key-value',
+  'key value',
+  'tsv',
+  'formatted as',
+  'output as',
+  'return as',
+  'respond with',
+  'in the format'
 ];
 
 module.exports = {

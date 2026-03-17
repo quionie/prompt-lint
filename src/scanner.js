@@ -64,6 +64,13 @@ function collectFilesByExtensions(startPath, extensions, options = {}) {
   }
 
   const stack = [startPath];
+  const visitedDirs = new Set();
+
+  try {
+    visitedDirs.add(fs.realpathSync(startPath));
+  } catch {
+    // If we can't resolve the start path, proceed without cycle protection
+  }
 
   while (stack.length > 0) {
     const currentDir = stack.pop();
@@ -80,6 +87,15 @@ function collectFilesByExtensions(startPath, extensions, options = {}) {
 
       if (entry.isDirectory()) {
         if (!shouldSkipDirectory(entry.name)) {
+          try {
+            const realPath = fs.realpathSync(fullPath);
+            if (visitedDirs.has(realPath)) {
+              continue;
+            }
+            visitedDirs.add(realPath);
+          } catch {
+            continue;
+          }
           stack.push(fullPath);
         }
         continue;
@@ -300,6 +316,20 @@ function readStringLiteralAt(text, startIndex) {
 
     if (quote === '`' && char === '$' && text[i + 1] === '{' && !isEscaped(text, i)) {
       return null;
+    }
+
+    if (char === '\\' && i + 1 < text.length) {
+      const next = text[i + 1];
+      const escapeMap = { n: '\n', t: '\t', r: '\r', '\\': '\\' };
+      if (next === quote) {
+        value += quote;
+      } else if (escapeMap[next] !== undefined) {
+        value += escapeMap[next];
+      } else {
+        value += next;
+      }
+      i += 2;
+      continue;
     }
 
     value += char;

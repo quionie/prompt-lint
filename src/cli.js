@@ -57,7 +57,7 @@ function parseArgs(argv) {
 
     if (arg === '--format') {
       const value = argv[i + 1];
-      if (!value) {
+      if (!value || value.startsWith('--')) {
         throw new Error('Missing value for --format. Use one of: text, json, sarif');
       }
       i += 1;
@@ -65,13 +65,17 @@ function parseArgs(argv) {
       continue;
     }
     if (arg.startsWith('--format=')) {
-      format = arg.slice('--format='.length);
+      const value = arg.slice('--format='.length);
+      if (!value) {
+        throw new Error('Missing value for --format. Use one of: text, json, sarif');
+      }
+      format = value;
       continue;
     }
 
     if (arg === '--baseline') {
       const value = argv[i + 1];
-      if (!value) {
+      if (!value || value.startsWith('--')) {
         throw new Error('Missing value for --baseline. Example: --baseline .promptlint-baseline.json');
       }
       i += 1;
@@ -79,13 +83,17 @@ function parseArgs(argv) {
       continue;
     }
     if (arg.startsWith('--baseline=')) {
-      baselineFile = arg.slice('--baseline='.length);
+      const value = arg.slice('--baseline='.length);
+      if (!value) {
+        throw new Error('Missing value for --baseline. Example: --baseline .promptlint-baseline.json');
+      }
+      baselineFile = value;
       continue;
     }
 
     if (arg === '--trend-file') {
       const value = argv[i + 1];
-      if (!value) {
+      if (!value || value.startsWith('--')) {
         throw new Error('Missing value for --trend-file. Example: --trend-file .promptlint-trend.json');
       }
       i += 1;
@@ -93,7 +101,11 @@ function parseArgs(argv) {
       continue;
     }
     if (arg.startsWith('--trend-file=')) {
-      trendFile = arg.slice('--trend-file='.length);
+      const value = arg.slice('--trend-file='.length);
+      if (!value) {
+        throw new Error('Missing value for --trend-file. Example: --trend-file .promptlint-trend.json');
+      }
+      trendFile = value;
       continue;
     }
 

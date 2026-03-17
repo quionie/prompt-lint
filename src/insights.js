@@ -52,12 +52,21 @@ function extractBaselineWarnings(raw) {
 }
 
 function loadJsonFile(filePath) {
-  if (!fs.existsSync(filePath)) {
-    return null;
+  let content;
+  try {
+    content = fs.readFileSync(filePath, 'utf8');
+  } catch (err) {
+    if (err.code === 'ENOENT') {
+      return null;
+    }
+    throw new Error(`Failed to read ${filePath}: ${err.message}`);
   }
 
-  const content = fs.readFileSync(filePath, 'utf8');
-  return JSON.parse(content);
+  try {
+    return JSON.parse(content);
+  } catch (err) {
+    throw new Error(`Invalid JSON in ${filePath}: ${err.message}`);
+  }
 }
 
 function loadBaselineFile(filePath) {
@@ -70,18 +79,18 @@ function loadBaselineFile(filePath) {
 }
 
 function diffAgainstBaseline(currentWarnings, baselineWarnings) {
-  const currentSet = new Set(currentWarnings.map(warningFingerprint));
   const baselineSet = new Set((baselineWarnings || []).map(warningFingerprint));
+  const currentFingerprints = currentWarnings.map(warningFingerprint);
+  const currentSet = new Set(currentFingerprints);
 
   let unchanged = 0;
   const newWarnings = [];
 
-  for (const warning of currentWarnings) {
-    const fingerprint = warningFingerprint(warning);
-    if (baselineSet.has(fingerprint)) {
+  for (let i = 0; i < currentWarnings.length; i++) {
+    if (baselineSet.has(currentFingerprints[i])) {
       unchanged += 1;
     } else {
-      newWarnings.push(warning);
+      newWarnings.push(currentWarnings[i]);
     }
   }
 
@@ -94,7 +103,7 @@ function diffAgainstBaseline(currentWarnings, baselineWarnings) {
 
   return {
     baselineCount: baselineSet.size,
-    currentCount: currentSet.size,
+    currentCount: currentWarnings.length,
     newCount: newWarnings.length,
     fixedCount: fixed,
     unchangedCount: unchanged,
@@ -139,7 +148,7 @@ function appendTrendAndSave(filePath, entry) {
   };
 }
 
-function escapeGitHubAnnotation(value) {
+function escapeGitHubPropertyValue(value) {
   return String(value)
     .replace(/%/g, '%25')
     .replace(/\r/g, '%0D')
@@ -148,10 +157,17 @@ function escapeGitHubAnnotation(value) {
     .replace(/,/g, '%2C');
 }
 
+function escapeGitHubMessage(value) {
+  return String(value)
+    .replace(/%/g, '%25')
+    .replace(/\r/g, '%0D')
+    .replace(/\n/g, '%0A');
+}
+
 function buildGitHubAnnotationLine(warning) {
-  const title = escapeGitHubAnnotation(warning.rule);
-  const message = escapeGitHubAnnotation(warning.message);
-  const file = escapeGitHubAnnotation(warning.file);
+  const title = escapeGitHubPropertyValue(warning.rule);
+  const message = escapeGitHubMessage(warning.message);
+  const file = escapeGitHubPropertyValue(warning.file);
   const line = Number.isInteger(warning.line) ? warning.line : 1;
 
   return `::warning file=${file},line=${line},title=${title}::${message}`;
