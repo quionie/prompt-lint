@@ -1,7 +1,6 @@
 # prompt-lint
 
-`prompt-lint` is an open-source Node.js CLI that statically lints LLM prompts in your codebase.
-It is designed to be like ESLint for prompts: fast, dependency-light, rule-based, and CI-friendly.
+`prompt-lint` is a Node.js CLI that statically lints LLM prompts in your codebase. Think ESLint, but for prompts -- fast, rule-based, minimal dependencies, and built to run in CI.
 
 ## Installation
 
@@ -60,7 +59,7 @@ npx prompt-lint --scan-rag
 npx prompt-lint --scan-rag ./docs
 ```
 
-Emit machine-readable output for CI/code scanning:
+Machine-readable output for CI/code scanning:
 
 ```bash
 npx prompt-lint --format json
@@ -68,13 +67,13 @@ npx prompt-lint --format sarif
 npx prompt-lint --scan-rag --format sarif
 ```
 
-Baseline diffing against a saved report:
+Diff against a saved baseline:
 
 ```bash
 npx prompt-lint --baseline .promptlint-baseline.json
 ```
 
-Trend report persistence across runs:
+Track trends across runs:
 
 ```bash
 npx prompt-lint --trend-file .promptlint-trend.json
@@ -116,9 +115,9 @@ Output formats:
 
 Rich output flags:
 
-- `--baseline <file>`: compare current issues against a previous JSON baseline (`warnings` array).
-- `--trend-file <file>`: append run metrics and print issue trend delta.
-- `--github-annotations`: emit GitHub Actions `::warning` annotation commands per warning.
+- `--baseline <file>`: compare current issues against a saved JSON baseline (`warnings` array).
+- `--trend-file <file>`: append run metrics and print the issue trend delta.
+- `--github-annotations`: output GitHub Actions `::warning` annotations for each warning.
 
 ## Plugin system
 
@@ -170,15 +169,13 @@ Extracted fields:
 
 ## Rules
 
-- `vaguePrompt`: warns when a prompt is too short (<8 words) or lacks a clear instruction verb.
-- `missingOutputFormat`: warns when output shape is not specified (for example JSON, bullets, table).
-- `conflictingInstructions`: warns on contradictory constraints (for example short but comprehensive).
+- `vaguePrompt`: warns when a prompt is both short (<8 words) and missing a clear instruction verb.
+- `missingOutputFormat`: warns when no output shape is specified (JSON, bullets, table, CSV, XML, markdown, etc).
+- `conflictingInstructions`: warns on contradictory constraints (e.g. "short but comprehensive").
 - `tokenExplosion`: warns when prompt length exceeds `maxPromptLength` from config (default `1000`).
-- `tokenUsage`: warns when prompt length is above ~1500 chars (approximate token-risk heuristic).
+- `tokenUsage`: warns when prompt length is above ~1500 chars. Uses a character-length heuristic for now.
 - `promptInjection`: optional rule to flag jailbreak/injection-like instructions.
-- `ragPromptInjection`: detects likely injection/jailbreak directives in RAG knowledge documents when `--scan-rag` is enabled.
-
-`tokenUsage` currently uses a character-length heuristic. Future versions can integrate `ai-token-counter` for more accurate token estimates.
+- `ragPromptInjection`: scans RAG knowledge documents for injection/jailbreak directives when `--scan-rag` is enabled. Covers patterns like "ignore previous instructions", "reveal the system prompt", `[INST]` tags, "pretend you are", and more.
 
 ## Configuration
 
@@ -199,7 +196,7 @@ Supported options:
 - `enablePromptInjectionRule` (boolean): when `true`, enables `promptInjection`. Default: `false`.
 - `include` (string[]): optional glob patterns to include files (applies to prompt and RAG scans).
 - `exclude` (string[]): optional glob patterns to exclude files (applies to prompt and RAG scans).
-- `plugins` (string[]): optional plugin package names (for example `enterprise-style`).
+- `plugins` (string[]): optional plugin package names (e.g. `enterprise-style`).
 
 Example for a monorepo:
 
@@ -221,7 +218,7 @@ coverage/**
 packages/**/generated/**
 ```
 
-`.promptlintignore` is applied together with `include`/`exclude` globs, and is especially useful for large monorepos.
+`.promptlintignore` is applied alongside `include`/`exclude` globs. Useful for monorepos.
 
 ## RAG Injection Detection
 
@@ -234,11 +231,13 @@ Supported document file types:
 - `.json`
 - `.csv`
 
-The scanner checks document content line-by-line with the `ragPromptInjection` rule and reports suspicious instructions like:
+The scanner checks each line against the `ragPromptInjection` rule and flags suspicious instructions like:
 
 - `ignore previous instructions`
 - `reveal the system prompt`
 - `system override`
+- `[INST]` / `[system]` tags
+- `pretend you are...`
 
 Example:
 
